@@ -47,6 +47,41 @@ func main() {
 }
 ```
 
+### Paths
+
+When using deserializers, the data must follow the path of the corresponding tags used by the deserializer. This is obvious for most structures, except for structs with embedded members. Here is an example of how to handle this:
+
+```go
+type GenericConfig struct {
+    Field1 string
+    Field2 int
+}
+
+type WebConfig struct {
+    GenericConfig
+    Port int
+}
+```
+
+With the `YAML` deserializer, the configuration file would need to look like this:
+
+```yaml
+GenericConfig:
+  Field1: "value1"
+  Field2: 42
+Port: 8080
+```
+
+This does not apply for overrides or the mock loader (they use the same code behind the scenes). With overrides one can either use the path with or without the embedded struct name. Meaning both 
+
+```go
+loader.Override("Field1", "new value")
+// and
+loader.Override("GenericConfig.Field1", "new value")
+```
+
+are valid. Overrides/MockLoader also needs to match the field names exactly, they do not account for any tags.
+
 ### Applying Overrides
 
 You can override specific fields of the configuration, useful for setting dynamic values or secrets:

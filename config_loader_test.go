@@ -141,3 +141,73 @@ func TestLoadNonExistentFile(t *testing.T) {
 		t.Error("Expected an error for non-existent file, got nil")
 	}
 }
+
+type ConfigWithEmbeds struct {
+	Config
+	Field4 float64 `yaml:"field4"`
+}
+
+func TestLoadWithEmbeddedStructIndirectly(t *testing.T) {
+	configData := []byte("config:\n  field1: value1\n  field2: 2\n  nested:\n    field3: true\nfield4: 3.14")
+	filename, err := createTempYAMLFile(configData)
+	if err != nil {
+		t.Fatalf("Unable to create temp YAML file: %s", err)
+	}
+
+	var config ConfigWithEmbeds
+	loader := configloader.NewConfigLoader(filepath.Base(filename),
+		configloader.WithPath(filepath.Dir(filename)),
+		configloader.WithDeserializer(new(configloader.YAMLDeserializer)),
+	)
+
+	if err := loader.Load(&config); err != nil {
+		t.Fatalf("Failed to load configuration: %s", err)
+	}
+
+	if config.Field1 != "value1" {
+		t.Errorf("Expected 'field1' to be 'value1', got '%s'", config.Field1)
+	}
+	if config.Field2 != 2 {
+		t.Errorf("Expected 'field2' to be 2, got %d", config.Field2)
+	}
+	if config.Nested.Field3 != true {
+		t.Errorf("Expected 'nested.field3' to be true, got %t", config.Nested.Field3)
+	}
+	if config.Field4 != 3.14 {
+		t.Errorf("Expected 'field4' to be 3.14, got %f", config.Field4)
+	}
+}
+
+func TestOverrideWithEmbeddedStruct(t *testing.T) {
+	configData := []byte("config:\n  field1: value1\n  field2: 2\n  nested:\n    field3: true\nfield4: 3.14")
+	filename, err := createTempYAMLFile(configData)
+	if err != nil {
+		t.Fatalf("Unable to create temp YAML file: %s", err)
+	}
+
+	var config ConfigWithEmbeds
+	loader := configloader.NewConfigLoader(filepath.Base(filename),
+		configloader.WithPath(filepath.Dir(filename)),
+		configloader.WithDeserializer(new(configloader.YAMLDeserializer)),
+	)
+
+	loader.Override("Field1", "overridden")
+	loader.Override("Config.Field2", 3)
+
+	if err := loader.Load(&config); err != nil {
+		t.Fatalf("Failed to load configuration: %s", err)
+	}
+
+	if config.Field1 != "overridden" {
+		t.Errorf("Expected 'field1' to be 'overridden', got '%s'", config.Field1)
+	}
+	if config.Field2 != 3 {
+		t.Errorf("Expected 'field2' to be 3, got %d", config.Field2)
+	}
+	if config.Nested.Field3 != true {
+		t.Errorf("Expected 'nested.field3' to be true, got %t", config.Nested.Field3)
+	}
+	if config.Field4 != 3.14 {
+		t.Errorf("Expected 'field4' to be 3.14, got %f", config.Field4)
+	}
+}
